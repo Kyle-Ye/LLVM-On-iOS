@@ -4,6 +4,8 @@ OS_VER := 14.0
 LLVM_ARCH := AArch64
 APPLE_ARCH := arm64
 TARGET_TRIPLE := $(APPLE_ARCH)-apple-ios$(OS_VER)
+SWIFT_BRANCH ?= swift-6.3-RELEASE
+SWIFT_TOOLCHAIN_ZIP := SwiftToolchain.zip
 
 # Cmake configurations
 LLVM_CMAKE_FLAGS := -G "Ninja" \
@@ -46,6 +48,27 @@ endef
 
 # Main Target
 all: CoreCompiler.framework/CoreCompiler
+
+swift-source:
+	$(call log_info,fetching swift sources)
+	SWIFT_BRANCH="$(SWIFT_BRANCH)" Scripts/build-swift-toolchain.sh fetch
+
+SwiftToolchain-iphoneos: swift-source
+	$(call log_info,building iOS-native swift toolchain)
+	SWIFT_BRANCH="$(SWIFT_BRANCH)" Scripts/build-swift-toolchain.sh build
+
+$(SWIFT_TOOLCHAIN_ZIP): SwiftToolchain-iphoneos
+	$(call log_info,packaging iOS-native swift toolchain)
+	Scripts/build-swift-toolchain.sh package
+
+swift-toolchain: $(SWIFT_TOOLCHAIN_ZIP)
+
+install-nyxian-swift-toolchain: $(SWIFT_TOOLCHAIN_ZIP)
+	$(call log_info,installing swift toolchain into Nyxian Shared resources)
+	Scripts/build-swift-toolchain.sh install-nyxian
+
+verify-swift-toolchain:
+	Scripts/build-swift-toolchain.sh verify-host
 
 # Fetch
 llvm-project:
@@ -98,6 +121,7 @@ clean-artifacts:
 	- rm CoreCompiler.framework/CoreCompiler
 	- rm CoreCompiler.framework/Headers/*
 	- rm -rf LLVM.xcframework
+	- rm -rf SwiftToolchain SwiftToolchain-iphoneos SwiftToolchain.zip
 
 clean: clean-artifacts
 	$(call log_info,cleaning up)
@@ -105,9 +129,11 @@ clean: clean-artifacts
 		! -name Makefile \
 		! -name LICENSE \
 		! -name README.md \
+		! -name SWIFT_TOOLCHAIN_PLAN.md \
 		! -name .git \
 		! -name .gitignore \
 		! -name .github \
+		! -name Scripts \
 		! -name CoreCompiler.framework \
 		! -name Source \
 		-exec rm -rf {} +

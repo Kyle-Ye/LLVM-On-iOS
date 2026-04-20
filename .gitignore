@@ -24,3 +24,9 @@ Clang**.xcframework/
 CoreCompiler.framework/CoreCompiler
 LLVM-iphoneos/
 CoreCompiler.framework/Headers/*
+swift-source/
+swift-build/
+SwiftToolchain/
+SwiftToolchain-iphoneos/
+SwiftToolchain.zip
+SwiftToolchain-iphoneos.tar.gz
