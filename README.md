@@ -45,8 +45,13 @@ Useful overrides:
 
 ```bash
 make swift-toolchain SWIFT_BRANCH=swift-6.3-RELEASE
+make swift-toolchain SWIFT_SOURCE_DIR=~/SwiftProject/swift
 make SwiftToolchain-iphoneos IOS_DEPLOYMENT_TARGET=17.0
 ```
+
+The Swift build uses `Scripts/swift-ios-toolchain-presets.ini`, which mirrors
+Swift's iPhoneOS arm64 cross-compiler preset and disables CMake test targets
+that cannot compile for iOS.
 
 The output archive is:
 

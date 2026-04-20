@@ -5,6 +5,7 @@ LLVM_ARCH := AArch64
 APPLE_ARCH := arm64
 TARGET_TRIPLE := $(APPLE_ARCH)-apple-ios$(OS_VER)
 SWIFT_BRANCH ?= swift-6.3-RELEASE
+SWIFT_SOURCE_DIR ?= swift-source
 SWIFT_TOOLCHAIN_ZIP := SwiftToolchain.zip
 
 # Cmake configurations
@@ -51,11 +52,11 @@ all: CoreCompiler.framework/CoreCompiler
 
 swift-source:
 	$(call log_info,fetching swift sources)
-	SWIFT_BRANCH="$(SWIFT_BRANCH)" Scripts/build-swift-toolchain.sh fetch
+	SWIFT_BRANCH="$(SWIFT_BRANCH)" SWIFT_SOURCE_DIR="$(SWIFT_SOURCE_DIR)" Scripts/build-swift-toolchain.sh fetch
 
 SwiftToolchain-iphoneos: swift-source
 	$(call log_info,building iOS-native swift toolchain)
-	SWIFT_BRANCH="$(SWIFT_BRANCH)" Scripts/build-swift-toolchain.sh build
+	SWIFT_BRANCH="$(SWIFT_BRANCH)" SWIFT_SOURCE_DIR="$(SWIFT_SOURCE_DIR)" Scripts/build-swift-toolchain.sh build
 
 $(SWIFT_TOOLCHAIN_ZIP): SwiftToolchain-iphoneos
 	$(call log_info,packaging iOS-native swift toolchain)

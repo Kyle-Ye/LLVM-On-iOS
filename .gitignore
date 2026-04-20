@@ -26,6 +26,7 @@ LLVM-iphoneos/
 CoreCompiler.framework/Headers/*
 swift-source/
 swift-build/
+build/
 SwiftToolchain/
 SwiftToolchain-iphoneos/
 SwiftToolchain.zip
