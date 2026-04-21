@@ -54,7 +54,14 @@ static void CCDependencyScannerFinalize(CFTypeRef cf)
 static void CCDependencyScannerInit(CFTypeRef cf)
 {
     CCDependencyScannerRef dependencyScanner = (CCDependencyScannerRef)cf;
-    new (&dependencyScanner->service) DependencyScanningService(ScanningMode::DependencyDirectivesScan, ScanningOutputFormat::Full, ScanningOptimizations::Default, false);
+    new (&dependencyScanner->service) DependencyScanningService(ScanningMode::DependencyDirectivesScan,
+                                                                ScanningOutputFormat::Full,
+                                                                CASOptions(),
+                                                                nullptr,
+                                                                nullptr,
+                                                                nullptr,
+                                                                ScanningOptimizations::Default,
+                                                                false);
     new (&dependencyScanner->BaseArgs) std::vector<std::string>();
     new (&dependencyScanner->sysroot) std::string();
     new (&dependencyScanner->resourceDir) std::string();

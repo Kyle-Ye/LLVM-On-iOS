@@ -57,7 +57,8 @@ CCASTUnitRef CCCompilerJobExecute(CCJobRef job)
     llvm::SmallVector<const char *, 64> Args = StringVectorToCStrings(argStorage);
     
     /* setting up clang driver */
-    IntrusiveRefCntPtr<DiagnosticsEngine> Diags(new DiagnosticsEngine(llvm::makeIntrusiveRefCnt<DiagnosticIDs>(), llvm::makeIntrusiveRefCnt<DiagnosticOptions>(), new IgnoringDiagConsumer()));
+    auto DiagOpts = std::make_shared<DiagnosticOptions>();
+    IntrusiveRefCntPtr<DiagnosticsEngine> Diags(new DiagnosticsEngine(llvm::makeIntrusiveRefCnt<DiagnosticIDs>(), *DiagOpts, new IgnoringDiagConsumer()));
     
     /* creating clang invocation */
     auto CI = std::make_shared<CompilerInvocation>();
@@ -78,6 +79,7 @@ CCASTUnitRef CCCompilerJobExecute(CCJobRef job)
     ASTUnit *ASTUnit = ASTUnit::LoadFromCompilerInvocationAction(
         CI,
         std::make_shared<PCHContainerOperations>(),
+        DiagOpts,
         Diags,
         Act.release(),
         nullptr,

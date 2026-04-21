@@ -1,12 +1,29 @@
 # Quick configurations
 ROOT := $(PWD)
-OS_VER := 14.0
+OS_VER := 16.0
 LLVM_ARCH := AArch64
 APPLE_ARCH := arm64
 TARGET_TRIPLE := $(APPLE_ARCH)-apple-ios$(OS_VER)
 SWIFT_BRANCH ?= swift-6.3-RELEASE
 SWIFT_SOURCE_DIR ?= swift-source
+SWIFT_REPO_DIR ?= ~/SwiftProject/swift
+LLVM_REPO_DIR ?= ~/SwiftProject/llvm-project
+SWIFT_LLVM_BUILD_DIR ?= ~/SwiftProject/build/LLVMClangSwift_iphoneos/llvm-iphoneos-arm64
 SWIFT_TOOLCHAIN_ZIP := SwiftToolchain.zip
+SWIFT_TOOLCHAIN_ROOT ?= SwiftToolchain-iphoneos
+CMARK_IPHONEOS_DIR ?= ~/SwiftProject/build/LLVMClangSwift_iphoneos/cmark-iphoneos-arm64
+SWIFT_STATIC_LIBS := $(wildcard $(SWIFT_TOOLCHAIN_ROOT)/lib/libswift*.a) \
+					 $(wildcard $(SWIFT_TOOLCHAIN_ROOT)/lib/lib_CompilerRegexParser.a) \
+					 $(wildcard $(SWIFT_TOOLCHAIN_ROOT)/lib/libclang*.a) \
+					 $(wildcard $(SWIFT_TOOLCHAIN_ROOT)/lib/liblld*.a) \
+					 $(wildcard $(SWIFT_TOOLCHAIN_ROOT)/lib/libLLVM*.a) \
+					 $(CMARK_IPHONEOS_DIR)/src/libcmark-gfm.a \
+					 $(CMARK_IPHONEOS_DIR)/extensions/libcmark-gfm-extensions.a
+SWIFT_HOST_COMPILER_DYLIBS := $(wildcard $(SWIFT_TOOLCHAIN_ROOT)/lib/swift/host/compiler/lib_Compiler*.dylib)
+SWIFT_LINK_PATHS := -L$(SWIFT_TOOLCHAIN_ROOT)/lib \
+					-L$(SWIFT_TOOLCHAIN_ROOT)/lib/swift/iphoneos \
+					-L$(SWIFT_TOOLCHAIN_ROOT)/lib/swift/iphoneos/$(APPLE_ARCH) \
+					-L$(SWIFT_TOOLCHAIN_ROOT)/lib/swift/host/compiler
 
 # Cmake configurations
 LLVM_CMAKE_FLAGS := -G "Ninja" \
@@ -104,18 +121,31 @@ LLVM.xcframework: LLVM-iphoneos/llvm.a
 	 	-output LLVM.xcframework
 
 CoreCompiler.framework/CoreCompiler: SDK := $(shell xcrun --sdk iphoneos --show-sdk-path)
-CoreCompiler.framework/CoreCompiler: INC := -ISource -ILLVM.xcframework/ios-arm64/Headers
+CoreCompiler.framework/CoreCompiler: INC := -ISource \
+	-I$(SWIFT_LLVM_BUILD_DIR)/include \
+	-I$(SWIFT_LLVM_BUILD_DIR)/tools/clang/include \
+	-I$(SWIFT_LLVM_BUILD_DIR)/tools/lld/include \
+	-I$(LLVM_REPO_DIR)/llvm/include \
+	-I$(LLVM_REPO_DIR)/clang/include \
+	-I$(LLVM_REPO_DIR)/lld/include \
+	-I$(SWIFT_TOOLCHAIN_ROOT)/include \
+	-I$(SWIFT_REPO_DIR)/include
 CoreCompiler.framework/CoreCompiler: LLVM.xcframework
 	$(call log_info,building CoreCompiler framework)
 	-rm *.o
 	clang -c -target $(TARGET_TRIPLE) -isysroot $(SDK) $(INC) Source/CoreCompiler/*.c
 	clang -c -fobjc-arc -ObjC -target $(TARGET_TRIPLE) -isysroot $(SDK) $(INC) Source/CoreCompiler/*.m
-	clang++ -c -std=c++17 -target $(TARGET_TRIPLE) -isysroot $(SDK) $(INC) Source/CoreCompiler/*.cpp
-	clang++ -fobjc-arc -ObjC -target $(TARGET_TRIPLE) -isysroot $(SDK) *.o LLVM.xcframework/ios-arm64/llvm.a  -framework CoreFoundation -o CoreCompiler.framework/CoreCompiler -shared -fPIC -install_name @rpath/CoreCompiler.framework/CoreCompiler
+	clang++ -c -std=c++17 -fno-rtti -target $(TARGET_TRIPLE) -isysroot $(SDK) $(INC) Source/CoreCompiler/*.cpp
+	clang++ -fobjc-arc -ObjC -target $(TARGET_TRIPLE) -isysroot $(SDK) $(SWIFT_LINK_PATHS) *.o $(SWIFT_STATIC_LIBS) $(SWIFT_HOST_COMPILER_DYLIBS) -framework CoreFoundation -framework Foundation -lz -lxml2 -lswiftCore -o CoreCompiler.framework/CoreCompiler -shared -fPIC -install_name @rpath/CoreCompiler.framework/CoreCompiler
 	-rm *.o
 	-rm -rf CoreCompiler.framework/Headers
 	mkdir -p CoreCompiler.framework/Headers
 	cp Source/CoreCompiler/*.h CoreCompiler.framework/Headers/
+	cp $(SWIFT_HOST_COMPILER_DYLIBS) CoreCompiler.framework/
+	-install_name_tool -add_rpath @loader_path CoreCompiler.framework/CoreCompiler
+	for dylib in CoreCompiler.framework/lib_Compiler*.dylib; do \
+		install_name_tool -add_rpath @loader_path "$$dylib" || true; \
+	done
 
 # Cleanup
 clean-artifacts:

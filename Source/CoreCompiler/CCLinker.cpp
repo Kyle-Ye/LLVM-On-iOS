@@ -55,8 +55,8 @@ Boolean CCLinkerJobExecute(CCJobRef job,
     argStorage.push_back("ld64.lld");   /* have to inject */
     Args.insert(Args.begin(), argStorage.back().c_str());
     
-    std::vector<LDDiagnostic> diagnostics;
-    int retCode;
+    std::string diagnostics;
+    int retCode = 1;
     
     llvm::CrashRecoveryContext CRC;
     CRC.RunSafely([&]{
@@ -64,9 +64,11 @@ Boolean CCLinkerJobExecute(CCJobRef job,
             {lld::Darwin, &lld::macho::link},
         };
         
-        lld::Result result = lld::lldMain(Args, llvm::nulls(), llvm::nulls(), drivers, [&diagnostics](const LDDiagnostic &diag) {
-            diagnostics.push_back(diag);
-        });
+        std::string stderrBuffer;
+        llvm::raw_string_ostream stderrStream(stderrBuffer);
+        lld::Result result = lld::lldMain(Args, llvm::nulls(), stderrStream, drivers);
+        stderrStream.flush();
+        diagnostics = stderrBuffer;
         retCode = result.retCode;
         
         lld::CommonLinkerContext::destroy();
@@ -76,16 +78,16 @@ Boolean CCLinkerJobExecute(CCJobRef job,
     {
         /* process error returns */
         CFAllocatorRef allocator = CFGetAllocator(job);
-        CFMutableArrayRef result = CFArrayCreateMutable(allocator, diagnostics.size(), &kCFTypeArrayCallBacks);
+        CFMutableArrayRef result = CFArrayCreateMutable(allocator, diagnostics.empty() ? 0 : 1, &kCFTypeArrayCallBacks);
         if(result == nullptr)
         {
             return retCode == 0;
         }
         
-        for(auto it = diagnostics.begin(); it != diagnostics.end(); ++it)
+        if(!diagnostics.empty())
         {
-            CFStringRef message = CFStringCreateWithCString(allocator, it->message.c_str(), kCFStringEncodingUTF8);
-            CCDiagnosticRef diagnosticRef = CCDiagnosticCreate(allocator, CCDiagnosticTypeInternal, (it->kind == LDDiagnostic::Kind::Error) ? CCDiagnosticLevelError : CCDiagnosticLevelWarning, nullptr, message);
+            CFStringRef message = CFStringCreateWithCString(allocator, diagnostics.c_str(), kCFStringEncodingUTF8);
+            CCDiagnosticRef diagnosticRef = CCDiagnosticCreate(allocator, CCDiagnosticTypeInternal, retCode == 0 ? CCDiagnosticLevelWarning : CCDiagnosticLevelError, nullptr, message);
             CFRelease(message);
             if(diagnosticRef != nullptr)
             {

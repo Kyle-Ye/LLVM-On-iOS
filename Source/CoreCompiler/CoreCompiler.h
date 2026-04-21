@@ -37,6 +37,7 @@
 #include <CoreCompiler/CCASTUnit.h>
 #include <CoreCompiler/CCDependencyScanner.h>
 #include <CoreCompiler/CCCompiler.h>
+#include <CoreCompiler/CCSwiftCompiler.h>
 #include <CoreCompiler/CCLinker.h>
 #include <CoreCompiler/CCUtils.h>
 
@@ -49,6 +50,7 @@
 #include <CoreCompiler/CCKASTUnit.h>
 #include <CoreCompiler/CCKDependencyScanner.h>
 #include <CoreCompiler/CCKCompiler.h>
+#include <CoreCompiler/CCKSwiftCompiler.h>
 #include <CoreCompiler/CCKLinker.h>
 
 #endif /* CORECOMPILER_H */

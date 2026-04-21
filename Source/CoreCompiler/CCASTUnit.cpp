@@ -289,7 +289,8 @@ Boolean CCASTUnitReparse(CCMutableASTUnitRef mutableUnit)
     
     args.push_back(filePath);
     
-    auto diags = CompilerInstance::createDiagnostics(new clang::DiagnosticOptions());
+    auto diagOpts = std::make_shared<clang::DiagnosticOptions>();
+    IntrusiveRefCntPtr<DiagnosticsEngine> diags(new DiagnosticsEngine(llvm::makeIntrusiveRefCnt<DiagnosticIDs>(), *diagOpts, new IgnoringDiagConsumer()));
     
     SmallVector<ASTUnit::RemappedFile, 4> remaps;
     CFDataRef data = CCFileGetUnsavedData(mutableUnit->file);
@@ -308,6 +309,7 @@ reparse_from_nothing:
         mutableUnit->unit = ASTUnit::LoadFromCommandLine(args.data(),
                                                          args.data() + args.size(),
                                                          std::make_shared<PCHContainerOperations>(),
+                                                         diagOpts,
                                                          diags,
                                                          "",    /* resources comes from arguments */
                                                          /*StorePreamblesInMemory=*/true,
@@ -595,7 +597,7 @@ CCFileSourceLocationRef CCASTUnitCopyDefinitionAtLocation(CCASTUnitRef unit,
     SourceManager &SM = unit->unit->getSourceManager();
     FileManager &FM = unit->unit->getFileManager();
     
-    auto fileEntry = FM.getFile(filePath);
+    auto fileEntry = FM.getOptionalFileRef(filePath);
     if(!fileEntry)
     {
         return nullptr;
