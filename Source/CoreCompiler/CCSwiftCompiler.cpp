@@ -28,7 +28,11 @@
 #include <swift/FrontendTool/FrontendTool.h>
 #include <llvm/Support/ErrorHandling.h>
 #include <fcntl.h>
+#include <mutex>
 #include <unistd.h>
+
+static std::once_flag SwiftModulesInitOnce;
+static std::mutex SwiftFrontendMutex;
 
 static CFStringRef CCStringCreateWithFileDescriptor(CFAllocatorRef allocator, int fd)
 {
@@ -66,6 +70,7 @@ static CFStringRef CCStringCreateWithFileDescriptor(CFAllocatorRef allocator, in
 Boolean CCSwiftCompilerExecute(CFArrayRef arguments, CFStringRef *outOutput)
 {
     assert(arguments != nullptr);
+    std::lock_guard<std::mutex> lock(SwiftFrontendMutex);
 
     CFIndex count = CFArrayGetCount(arguments);
     llvm::SmallVector<std::string, 64> argStorage;
@@ -83,7 +88,9 @@ Boolean CCSwiftCompilerExecute(CFArrayRef arguments, CFStringRef *outOutput)
         args.push_back(argStorage.back().c_str());
     }
 
-    initializeSwiftModules();
+    std::call_once(SwiftModulesInitOnce, [] {
+        initializeSwiftModules();
+    });
 
     char templatePath[] = "/tmp/nyxian-swift-frontend.XXXXXX";
     int diagnosticsFD = mkstemp(templatePath);
